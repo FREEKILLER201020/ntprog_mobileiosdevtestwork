@@ -14,7 +14,7 @@ struct ContentView: View {
     private let server = Server()
 //    Переменная, в которой хранится массив наших строк
     @State private var model: [Deal] = []
-    @State private var model_show: [SortDirection: [SortField: [Deal]]] = [:]
+    @State private var model_show: [Deal] = []
 //    Переменная настроки боковых отступов таблицы
     private let pad: CGFloat = 20
 //    Переменная доступа к сортировщику наших строк
@@ -26,7 +26,6 @@ struct ContentView: View {
 
     
     var body: some View {
-        let show = model_show[sorter.direction] ?? [:]
             VStack(spacing: 0) {
 //                Выводим на экран шапку таблицы
                 HeaderCell(sorter: $sorter)
@@ -39,7 +38,7 @@ struct ContentView: View {
 //                    "Ленивый" стак отризовывает только видимые строки + несколько строк за приделами зоны видимости
                     LazyVStack(spacing: 0) {
 //                        Выводим каждую строку на экран
-                        ForEach(show[sorter.field] ?? [], id: \.id) { model in
+                        ForEach(model_show, id: \.id) { model in
                             DealCell(deal: model)
                                 .padding(.vertical, 10)
                             Divider()
@@ -49,7 +48,7 @@ struct ContentView: View {
                 }
                 Divider()
 //                Счетчик количества строк, для отладки
-                Text("\(show[.date]?.count ?? 0)")
+//                Text("\(model_show.count)")
                 
 //                Выводим на экран доп элемент для настройки сортировки, так как в шапке отсутствует возможность сортировки по дате
                 SortView(sorter: $sorter)
@@ -68,19 +67,19 @@ struct ContentView: View {
             }
         }
 //        При изменении поля сортировки, обрабатываем событие
-//        .onChange(of: sorter.field){ _ in
-//            myQueue.async {
-////                Если изменилось поле сортировки, нужно повторно отсортировать массив
-//                self.model_show = sorter.Resort(model: model)
-//            }
-//        }
-////        При изменении порядка сортировки, обрабатываем событие
-//        .onChange(of: sorter.direction){ _ in
-//            myQueue.async {
-////                Если изменилось направление сортировки, достаточно развернуть массив массив
-//                self.model_show = sorter.Reorder(model: model)
-//            }
-//        }
+        .onChange(of: sorter.field){ _ in
+            myQueue.async {
+//                Если изменилось поле сортировки, нужно повторно отсортировать массив
+                self.model_show = sorter.Resort(model: model)
+            }
+        }
+//        При изменении порядка сортировки, обрабатываем событие
+        .onChange(of: sorter.direction){ _ in
+            myQueue.async {
+//                Если изменилось направление сортировки, достаточно развернуть массив массив
+                self.model_show = sorter.Reorder(model: model)
+            }
+        }
     }
     
 //    Обновление таблицы
@@ -98,7 +97,7 @@ struct ContentView: View {
 //                Если массивы одинаковой длинны, таблица обновлена
                 if (self.model_show.count != self.model.count){
                     self.model_show = sorter.Resort(model: model)
-                    print("Updated")
+//                    print("Updated")
                 }
 //                Вызываем рекурсивное обновление
                 UpdateTable()
