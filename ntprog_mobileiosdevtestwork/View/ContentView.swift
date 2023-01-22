@@ -77,7 +77,7 @@ struct ContentView: View {
         .onChange(of: sorter.direction){ _ in
             myQueue.async {
 //                Если изменилось направление сортировки, достаточно развернуть массив массив
-                self.model_show = sorter.Reorder(model: model)
+                self.model_show = sorter.Reorder(model: model_show)
             }
         }
     }

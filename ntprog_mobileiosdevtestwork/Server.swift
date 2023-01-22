@@ -23,7 +23,7 @@ final class Server {
     queue.async {
       var deals: [Deal] = []
       let dealsCount = Int64.random(in: 1_000_000..<1_001_000)
-      let dealsCountInPacket = 100
+      let dealsCountInPacket = 10000
       var j = 0
       for i in 0...dealsCount {
         let currentTimeStamp = Date().timeIntervalSince1970
