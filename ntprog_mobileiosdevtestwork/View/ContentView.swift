@@ -14,12 +14,15 @@ struct ContentView: View {
     private let server = Server()
 //    Переменная, в которой хранится массив наших строк
     @State private var model: [Deal] = []
+    @State private var model_show: [Deal] = []
 //    Переменная настроки боковых отступов таблицы
     private let pad: CGFloat = 20
 //    Переменная доступа к сортировщику наших строк
     @State private var sorter: Sorter = Sorter()
 //    Создание последовательно очереди для выполнения фоновых задач
-    let myQueue = DispatchQueue(label: "serial") // DispatchQueue is serial by default
+    let myQueue = DispatchQueue(label: "serial")
+
+    @State var first: Bool = true
 
     
     var body: some View {
@@ -35,7 +38,7 @@ struct ContentView: View {
 //                    "Ленивый" стак отризовывает только видимые строки + несколько строк за приделами зоны видимости
                     LazyVStack(spacing: 0) {
 //                        Выводим каждую строку на экран
-                        ForEach(model, id: \.id) { model in
+                        ForEach(model_show, id: \.id) { model in
                             DealCell(deal: model)
                                 .padding(.vertical, 10)
                             Divider()
@@ -45,7 +48,7 @@ struct ContentView: View {
                 }
                 Divider()
 //                Счетчик количества строк, для отладки
-//                Text("\(model.count)")
+//                Text("\(model_show.count)")
                 
 //                Выводим на экран доп элемент для настройки сортировки, так как в шапке отсутствует возможность сортировки по дате
                 SortView(sorter: $sorter)
@@ -54,13 +57,12 @@ struct ContentView: View {
         .onAppear{
 //            Подписываемся на получение новых сделок, после загрузки текущего экрана
             server.subscribeToDeals { deals in
-//                Сортировку строк отправляем в отдельный поток, что бы пользовательский интерфейс оставался отзывчивым
-//                поток последовательный что гарантирует коректную обработку всех поступаемых данных
-                myQueue.async {
-//                    Сохраняем отсортированный массив
-                    self.model = self.sorter.Resort(model: self.model, new: deals)
-//                    Выводим в консоль общее количество строк в нашем массиве, для отладки
-//                    print(self.model.count)
+//                Сохраняем все входящие данные
+                self.model.append(contentsOf: deals)
+//                print(model.count)
+//                Запускаем обновление таблицы
+                if (first){
+                    UpdateTable()
                 }
             }
         }
@@ -68,14 +70,37 @@ struct ContentView: View {
         .onChange(of: sorter.field){ _ in
             myQueue.async {
 //                Если изменилось поле сортировки, нужно повторно отсортировать массив
-                self.model = sorter.Resort(model: model)
+                self.model_show = sorter.Resort(model: model)
             }
         }
 //        При изменении порядка сортировки, обрабатываем событие
         .onChange(of: sorter.direction){ _ in
             myQueue.async {
 //                Если изменилось направление сортировки, достаточно развернуть массив массив
-                self.model = sorter.Reorder(model: model)
+                self.model_show = sorter.Reorder(model: model)
+            }
+        }
+    }
+    
+//    Обновление таблицы
+    func UpdateTable(){
+//        Если это первое обновление, деалем его без задежржки, что бы показать пользователю
+        if (first){
+            first = false
+            self.model_show = sorter.Resort(model: model)
+//            Рекурсивно вызываем следующее обновление
+            UpdateTable()
+        }
+        else{
+//            Обновление таблицы 1 раз в 10 секунд (для отзывчивости интерфейса)
+            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 10){
+//                Если массивы одинаковой длинны, таблица обновлена
+                if (self.model_show.count != self.model.count){
+                    self.model_show = sorter.Resort(model: model)
+//                    print("Updated")
+                }
+//                Вызываем рекурсивное обновление
+                UpdateTable()
             }
         }
     }
